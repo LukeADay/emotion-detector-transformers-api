@@ -11,18 +11,17 @@ A REST API for detecting emotions in text, using a fine-tuned transformer model 
 
 ## Directory Structure
 
-emotion-detection/
-├── app/
-│   ├── main.py            # Flask application
-│   ├── model/             # Directory for the fine-tuned model
-│   └── templates/         # Optional HTML templates for UI (if needed)
-├── fine_tune.py           # Script to fine-tune the model
-├── Dockerfile             # Docker configuration for containerizing the app
-├── requirements.txt       # Dependencies for the Flask app and model
-├── README.md              # Project description and setup instructions
-└── .gitignore             # Files to exclude from version control
-
----
+```
+|── Dockerfile
+├── LICENSE
+├── README.md
+├── app
+│   ├── main.py
+│   ├── model
+│   └── templates
+├── fine_tune.py
+├── requirements.txt
+```
 
 ## Installation
 
