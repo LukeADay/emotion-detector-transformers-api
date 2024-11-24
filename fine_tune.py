@@ -43,5 +43,5 @@ trainer = Trainer(
 trainer.train()
 
 # Save the fine-tuned model
-model.save_pretrained("./emotion_model")
-tokenizer.save_pretrained("./emotion_model")
+model.save_pretrained("./app.emotion_model")
+tokenizer.save_pretrained("./app/emotion_model")
