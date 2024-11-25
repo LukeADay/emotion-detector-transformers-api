@@ -45,8 +45,8 @@ jobs:
         run: |
           echo "Building and pushing the Docker image..."
           docker buildx build --platform linux/amd64 \
-            -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} . \
-            --push
+            --output=type=registry \
+            -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} .
 
       - name: Check Image Manifest
         run: |
