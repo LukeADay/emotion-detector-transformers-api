@@ -51,15 +51,27 @@ jobs:
             --push
           echo "Docker image pushed to ECR successfully."         
           
-      - name: Deploy to Lambda
+      - name: Create or Update Lambda Function
         env:
           AWS_ACCOUNT_ID: 349523694179
           AWS_REGION: eu-west-2
         run: |
-          echo "Updating AWS Lambda function..."
-          aws lambda update-function-code \
-            --function-name emotion-detection \
-            --image-uri $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/emotion-detection:latest
+          echo "Checking if the Lambda function exists..."
+          if ! aws lambda get-function --function-name emotion-detection > /dev/null 2>&1; then
+            echo "Creating AWS Lambda function..."
+            aws lambda create-function \
+              --function-name emotion-detection \
+              --package-type Image \
+              --code ImageUri=$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/emotion-detection:latest \
+              --role arn:aws:iam::349523694179:role/lambda-s3 \
+              --memory-size 3008 \
+              --timeout 30
+          else
+            echo "Updating AWS Lambda function..."
+            aws lambda update-function-code \
+              --function-name emotion-detection \
+              --image-uri $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/emotion-detection:latest
+          fi
 
       - name: Check Lambda Deployment Status
         run: |
