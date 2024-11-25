@@ -37,17 +37,27 @@ jobs:
           echo "Authenticating Docker to Amazon ECR..."
           aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
-      - name: Build and Push Docker Image
+      - name: Build and Push Docker Image (Ensure Manifest v2)
         env:
           AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
           AWS_REGION: eu-west-2
           IMAGE_REPO_NAME: emotion-detection
         run: |
-          echo "Building and pushing the Docker image in Docker V2 format..."
+          echo "Building the Docker image..."
           docker buildx build --platform linux/amd64 \
-            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest . \
-            --push
-          echo "Docker image pushed to ECR successfully."
+            --output "type=image,push=true" \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest .
+          echo "Ensuring Docker image uses manifest v2..."
+          aws ecr batch-get-image \
+            --repository-name $IMAGE_REPO_NAME \
+            --image-ids imageTag=latest \
+            --query 'images[].imageManifest' \
+            --output text > manifest.json
+          aws ecr put-image \
+            --repository-name $IMAGE_REPO_NAME \
+            --image-tag latest \
+            --image-manifest file://manifest.json
+          echo "Docker image pushed to ECR successfully with manifest v2."
 
       - name: Check if Lambda Function Exists
         id: lambda-check
@@ -73,3 +83,8 @@ jobs:
               --function-name emotion-detection \
               --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest
           fi
+
+      - name: Validate Lambda Deployment
+        run: |
+          echo "Validating the Lambda function deployment..."
+          aws lambda get-function --function-name emotion-detection
