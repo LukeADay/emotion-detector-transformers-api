@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - dev-test-aws
 
 jobs:
   build-and-deploy:
@@ -19,6 +20,11 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: eu-west-2
+
+      - name: Ensure ECR Repository Exists
+        run: |
+          aws ecr describe-repositories --repository-names emotion-detection || \
+          aws ecr create-repository --repository-name emotion-detection
 
       - name: Install Docker Buildx
         uses: docker/setup-buildx-action@v2
@@ -43,3 +49,7 @@ jobs:
           aws lambda update-function-code \
             --function-name emotion-detection \
             --image-uri 349523694179.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest
+
+      - name: Check Lambda Deployment Status
+        run: |
+          aws lambda get-function --function-name emotion-detection
