@@ -22,6 +22,8 @@ jobs:
           aws-region: eu-west-2
 
       - name: Ensure ECR Repository Exists
+        env:
+          AWS_ACCOUNT_ID: 349523694179
         run: |
           aws ecr describe-repositories --repository-names emotion-detection || \
           aws ecr create-repository --repository-name emotion-detection
@@ -30,8 +32,12 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Authenticate Docker to Amazon ECR
+        env:
+          AWS_ACCOUNT_ID: 349523694179
+          AWS_REGION: eu-west-2
         run: |
-          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.eu-west-2.amazonaws.com
+          aws ecr get-login-password --region $AWS_REGION | \
+          docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
       
       - name: Build and Push Docker Image
         env:
@@ -46,11 +52,14 @@ jobs:
           echo "Docker image pushed to ECR successfully."         
           
       - name: Deploy to Lambda
+        env:
+          AWS_ACCOUNT_ID: 349523694179
+          AWS_REGION: eu-west-2
         run: |
           echo "Updating AWS Lambda function..."
           aws lambda update-function-code \
             --function-name emotion-detection \
-            --image-uri 349523694179.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest
+            --image-uri $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/emotion-detection:latest
 
       - name: Check Lambda Deployment Status
         run: |
