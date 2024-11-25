@@ -1,17 +1,12 @@
-# Use Python 3.10 slim base image
-FROM python:3.10-slim
-
-# Set the working directory
-WORKDIR /app
-
-# Copy the app code into the container
-COPY ./app /app
+# Use the AWS Lambda Python 3.10 base image
+FROM public.ecr.aws/lambda/python:3.10
 
 # Install dependencies
-RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY requirements.txt .
+RUN pip install -r requirements.txt --target "${LAMBDA_TASK_ROOT}"
 
-# Expose port 8000 for Flask
-EXPOSE 8000
+# Copy the Lambda handler code
+COPY lambda_function.py ${LAMBDA_TASK_ROOT}/
 
-# Start the Flask app
-CMD ["python", "main.py"]
+# Set the Lambda handler
+CMD ["lambda_function.lambda_handler"]

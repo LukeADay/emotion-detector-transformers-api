@@ -1,0 +1,45 @@
+name: Build and Deploy to AWS Lambda
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v2
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: eu-west-2
+
+      - name: Install Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Build and Push Docker Image
+        env:
+          AWS_ACCOUNT_ID: 349523694179
+          AWS_REGION: eu-west-2
+          IMAGE_REPO_NAME: emotion-detection
+        run: |
+          echo "Building the Docker image..."
+          docker buildx build --platform linux/amd64 \
+            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest .
+          echo "Logging into Amazon ECR..."
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          echo "Pushing the Docker image to ECR..."
+          docker push $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest
+
+      - name: Deploy to Lambda
+        run: |
+          echo "Updating AWS Lambda function..."
+          aws lambda update-function-code \
+            --function-name emotion-detection \
+            --image-uri 349523694179.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest

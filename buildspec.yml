@@ -1,0 +1,16 @@
+version: 0.2
+
+phases:
+  install:
+    runtime-versions:
+      docker: 20
+    commands:
+      - nohup /usr/local/bin/dockerd-entrypoint.sh &
+      - timeout 15 sh -c "until docker info; do echo .; sleep 1; done"
+  build:
+    commands:
+      - echo "Building the Docker image..."
+      - docker buildx build --platform linux/amd64 -t 349523694179.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest .
+      - echo "Pushing the Docker image to ECR..."
+      - docker push 349523694179.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest
+
