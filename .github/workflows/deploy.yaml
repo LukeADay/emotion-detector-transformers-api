@@ -30,8 +30,12 @@ jobs:
         uses: docker/setup-buildx-action@v2
 
       - name: Authenticate Docker to Amazon ECR
+        env:
+          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+          AWS_REGION: eu-west-2
         run: |
-          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com
+          echo "Authenticating Docker to Amazon ECR..."
+          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
       - name: Build and Push Docker Image
         env:
@@ -42,31 +46,30 @@ jobs:
           echo "Building and pushing the Docker image in Docker V2 format..."
           docker buildx build --platform linux/amd64 \
             -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest . \
-            --output "type=registry"
+            --push
           echo "Docker image pushed to ECR successfully."
 
       - name: Check if Lambda Function Exists
         id: lambda-check
+        continue-on-error: true
         run: |
           echo "Checking if the Lambda function exists..."
-          aws lambda get-function --function-name emotion-detection || exit 1
+          aws lambda get-function --function-name emotion-detection
 
       - name: Create or Update Lambda Function
-        if: steps.lambda-check.outcome == 'failure'
         run: |
-          echo "Creating AWS Lambda function..."
-          aws lambda create-function \
-            --function-name emotion-detection \
-            --package-type Image \
-            --code ImageUri=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest \
-            --role arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/<YOUR_ROLE_NAME> \
-            --memory-size 3008 \
-            --timeout 30
-
-      - name: Update Lambda Function Code
-        if: steps.lambda-check.outcome == 'success'
-        run: |
-          echo "Updating AWS Lambda function..."
-          aws lambda update-function-code \
-            --function-name emotion-detection \
-            --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest
+          if [ "${{ steps.lambda-check.outcome }}" == "failure" ]; then
+            echo "Creating AWS Lambda function..."
+            aws lambda create-function \
+              --function-name emotion-detection \
+              --package-type Image \
+              --code ImageUri=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest \
+              --role arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/<YOUR_ROLE_NAME> \
+              --memory-size 3008 \
+              --timeout 30
+          else
+            echo "Updating AWS Lambda function..."
+            aws lambda update-function-code \
+              --function-name emotion-detection \
+              --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest
+          fi
