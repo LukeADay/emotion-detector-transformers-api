@@ -60,12 +60,12 @@ jobs:
           else
             echo "Manifest validation failed. Found: $(cat manifest.json)" && exit 1
           fi
-          
+
       - name: Check if Lambda Function Exists
         id: check-lambda
         run: |
           echo "Checking if the Lambda function exists..."
-          aws lambda get-function --function-name emotion-detection || exit 0
+          aws lambda get-function --function-name emotion-detection || exit 1
         continue-on-error: true
 
       - name: Deploy to Lambda
@@ -85,7 +85,8 @@ jobs:
             --code ImageUri=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} \
             --role arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/lambda-s3 \
             --memory-size 3008 \
-            --timeout 30
+            --timeout 30 \
+            --region ${{ env.AWS_REGION }}
 
       - name: Validate Lambda Deployment
         run: |
