@@ -29,6 +29,10 @@ jobs:
       - name: Install Docker Buildx
         uses: docker/setup-buildx-action@v2
 
+      - name: Authenticate Docker to Amazon ECR
+        run: |
+          aws ecr get-login-password --region eu-west-2 | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.eu-west-2.amazonaws.com
+      
       - name: Build and Push Docker Image
         env:
           AWS_ACCOUNT_ID: 349523694179
