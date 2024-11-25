@@ -10,6 +10,12 @@ jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
 
+    env:
+      AWS_REGION: eu-west-2
+      AWS_ACCOUNT_ID: 349523694179
+      IMAGE_REPO_NAME: emotion-detection
+      IMAGE_TAG: latest
+
     steps:
       - name: Checkout Code
         uses: actions/checkout@v3
@@ -19,70 +25,66 @@ jobs:
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: eu-west-2
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Ensure ECR Repository Exists
         run: |
-          aws ecr describe-repositories --repository-names emotion-detection || \
-          aws ecr create-repository --repository-name emotion-detection
+          aws ecr describe-repositories --repository-names ${{ env.IMAGE_REPO_NAME }} || \
+          aws ecr create-repository --repository-name ${{ env.IMAGE_REPO_NAME }}
 
       - name: Install Docker Buildx
         uses: docker/setup-buildx-action@v2
 
       - name: Authenticate Docker to Amazon ECR
-        env:
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          AWS_REGION: eu-west-2
         run: |
           echo "Authenticating Docker to Amazon ECR..."
-          aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
+          aws ecr get-login-password --region ${{ env.AWS_REGION }} | \
+          docker login --username AWS --password-stdin ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com
 
-      - name: Build and Push Docker Image (Ensure Manifest v2)
-        env:
-          AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-          AWS_REGION: eu-west-2
-          IMAGE_REPO_NAME: emotion-detection
+      - name: Build and Push Docker Image
         run: |
-          echo "Building the Docker image..."
+          echo "Building and pushing the Docker image..."
           docker buildx build --platform linux/amd64 \
-            --output "type=image,push=true" \
-            -t $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$IMAGE_REPO_NAME:latest .
-          echo "Ensuring Docker image uses manifest v2..."
-          aws ecr batch-get-image \
-            --repository-name $IMAGE_REPO_NAME \
-            --image-ids imageTag=latest \
-            --query 'images[].imageManifest' \
-            --output text > manifest.json
-          aws ecr put-image \
-            --repository-name $IMAGE_REPO_NAME \
-            --image-tag latest \
-            --image-manifest file://manifest.json
-          echo "Docker image pushed to ECR successfully with manifest v2."
+            -t ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} . \
+            --push
+
+      - name: Check Image Manifest
+        run: |
+          echo "Checking the image manifest..."
+          aws ecr batch-get-image --repository-name ${{ env.IMAGE_REPO_NAME }} \
+            --image-ids imageTag=${{ env.IMAGE_TAG }} \
+            --query 'images[].imageManifest' --output text > manifest.json
+          if grep -q 'vnd.oci.image.index.v1+json' manifest.json; then
+            echo "Manifest is valid."
+          else
+            echo "Manifest validation failed." && exit 1
+          fi
 
       - name: Check if Lambda Function Exists
-        id: lambda-check
-        continue-on-error: true
+        id: check-lambda
         run: |
           echo "Checking if the Lambda function exists..."
-          aws lambda get-function --function-name emotion-detection
+          aws lambda get-function --function-name emotion-detection || exit 0
+        continue-on-error: true
 
-      - name: Create or Update Lambda Function
+      - name: Deploy to Lambda
+        if: steps.check-lambda.outcome == 'success'
         run: |
-          if [ "${{ steps.lambda-check.outcome }}" == "failure" ]; then
-            echo "Creating AWS Lambda function..."
-            aws lambda create-function \
-              --function-name emotion-detection \
-              --package-type Image \
-              --code ImageUri=${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest \
-              --role arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/<YOUR_ROLE_NAME> \
-              --memory-size 3008 \
-              --timeout 30
-          else
-            echo "Updating AWS Lambda function..."
-            aws lambda update-function-code \
-              --function-name emotion-detection \
-              --image-uri ${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.eu-west-2.amazonaws.com/emotion-detection:latest
-          fi
+          echo "Updating AWS Lambda function..."
+          aws lambda update-function-code \
+            --function-name emotion-detection \
+            --image-uri ${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }}
+      - name: Create Lambda Function
+        if: steps.check-lambda.outcome != 'success'
+        run: |
+          echo "Creating AWS Lambda function..."
+          aws lambda create-function \
+            --function-name emotion-detection \
+            --package-type Image \
+            --code ImageUri=${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.IMAGE_REPO_NAME }}:${{ env.IMAGE_TAG }} \
+            --role arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/lambda-s3 \
+            --memory-size 3008 \
+            --timeout 30
 
       - name: Validate Lambda Deployment
         run: |
