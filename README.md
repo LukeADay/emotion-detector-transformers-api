@@ -1,6 +1,20 @@
 # Emotion Detection API
 
+[![Build and Deploy to AWS Lambda](https://github.com/LukeADay/emotion-detector-transformers-api/actions/workflows/deploy.yaml/badge.svg)](https://github.com/LukeADay/emotion-detector-transformers-api/actions/workflows/deploy.yaml/badge.svg)
+
 A REST API for detecting emotions in text, using a fine-tuned transformer model (`DistilBERT`) trained on the Emotion Dataset. Deployed via AWS Lambda and API Gateway for serverless operation, with CI/CD managed through GitHub Actions and AWS CodeBuild.
+
+### Quick Start: Querying the API
+
+To get started quickly, you can query the API with the following `curl` command:
+
+```bash
+curl -X POST \
+  -H "Content-Type: application/json" \
+  -d '{"text": "I feel so happy today!"}' \
+  https://9fuctupzoj.execute-api.eu-west-2.amazonaws.com/prod/predict
+
+```
 
 ---
 
