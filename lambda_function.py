@@ -56,35 +56,66 @@ except Exception as e:
 # Lambda handler function
 def lambda_handler(event, context):
     try:
-        # Parse input
-        body = json.loads(event.get("body", "{}"))
-        input_text = body.get("text", "")
-
-        if not input_text:
+        # Handle CORS preflight request
+        if event.get("httpMethod") == "OPTIONS":
             return {
-                "statusCode": 400,
-                "body": json.dumps({"error": "No text provided"}),
+                "statusCode": 200,
+                "headers": {
+                    "Access-Control-Allow-Origin": "*",
+                    "Access-Control-Allow-Methods": "POST, OPTIONS",
+                    "Access-Control-Allow-Headers": "Content-Type",
+                },
+                "body": json.dumps("CORS Preflight Response"),
             }
 
-        # Tokenize input and get predictions
-        print(f"Processing input text: {input_text}")
-        inputs = tokenizer(input_text, return_tensors="pt")
-        outputs = model(**inputs)
-        predicted_class = torch.argmax(outputs.logits, dim=1).item()
+        # Handle POST requests
+        elif event.get("httpMethod") == "POST":
+            # Parse input
+            body = json.loads(event.get("body", "{}"))
+            input_text = body.get("text", "")
 
-        # Map predicted class to emotion
-        labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
-        emotion = labels[predicted_class]
-        print(f"Predicted emotion: {emotion}")
+            if not input_text:
+                return {
+                    "statusCode": 400,
+                    "body": json.dumps({"error": "No text provided"}),
+                    "headers": {
+                        "Access-Control-Allow-Origin": "*",
+                        "Content-Type": "application/json",
+                    },
+                }
 
-        return {
-            "statusCode": 200,
-            "body": json.dumps({"emotion": emotion}),
-            "headers": {"Content-Type": "application/json"},
-        }
+            # Tokenize input and get predictions
+            print(f"Processing input text: {input_text}")
+            inputs = tokenizer(input_text, return_tensors="pt")
+            outputs = model(**inputs)
+            predicted_class = torch.argmax(outputs.logits, dim=1).item()
+
+            # Map predicted class to emotion
+            labels = ["sadness", "joy", "love", "anger", "fear", "surprise"]
+            emotion = labels[predicted_class]
+            print(f"Predicted emotion: {emotion}")
+
+            return {
+                "statusCode": 200,
+                "body": json.dumps({"emotion": emotion}),
+                "headers": {
+                    "Access-Control-Allow-Origin": "*",
+                    "Content-Type": "application/json",
+                },
+            }
+
+        # Return an error if the method is not POST or OPTIONS
+        else:
+            return {
+                "statusCode": 405,
+                "body": json.dumps({"error": "Method not allowed"}),
+                "headers": {"Access-Control-Allow-Origin": "*"},
+            }
+
     except Exception as e:
         print(f"Error processing request: {e}")
         return {
             "statusCode": 500,
             "body": json.dumps({"error": str(e)}),
+            "headers": {"Access-Control-Allow-Origin": "*"},
         }
