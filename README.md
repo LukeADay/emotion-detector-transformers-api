@@ -2,7 +2,7 @@
 
 [![Build and Deploy to AWS Lambda](https://github.com/LukeADay/emotion-detector-transformers-api/actions/workflows/deploy.yaml/badge.svg)](https://github.com/LukeADay/emotion-detector-transformers-api/actions/workflows/deploy.yaml/badge.svg)
 
-A REST API for detecting emotions in text, using a fine-tuned transformer model (`DistilBERT`) trained on the Emotion Dataset. Deployed via AWS Lambda and API Gateway for serverless operation, with CI/CD managed through GitHub Actions and AWS CodeBuild.
+A REST API for detecting emotions in text, using a pre-trained transformer model (`DistilBERT`) fine-tuned on the Emotion Dataset. Deployed via AWS Lambda and API Gateway for serverless operation, with CI/CD managed through GitHub Actions and AWS CodeBuild.
 
 ### Quick Start: Querying the API
 
