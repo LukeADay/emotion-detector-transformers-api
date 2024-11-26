@@ -1,4 +1,5 @@
 import os
+os.environ["TRANSFORMERS_CACHE"] = "/tmp"
 import json
 import boto3
 import torch
@@ -12,7 +13,7 @@ def download_model():
     if not os.path.exists(LOCAL_MODEL_DIR):
         os.makedirs(LOCAL_MODEL_DIR)
         s3 = boto3.client("s3")
-        files = ["model.safetensors", "special_tokens_map.json", "tokenizer_config.json", "tokenizer.json", "vocab.txt"]
+        files = ["config.json", "model.safetensors", "special_tokens_map.json", "tokenizer_config.json", "tokenizer.json", "vocab.txt"]
         for file in files:
             s3.download_file(S3_BUCKET, f"{MODEL_KEY_PREFIX}{file}", os.path.join(LOCAL_MODEL_DIR, file))
 
