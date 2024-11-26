@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - dev-test-aws
+    paths-ignore:
+      - "README.md"
 
 jobs:
   build-and-deploy:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-latests
 
     env:
       AWS_REGION: eu-west-2
@@ -92,3 +94,9 @@ jobs:
         run: |
           echo "Validating the Lambda function deployment..."
           aws lambda get-function --function-name emotion-detection
+
+      - name: Deploy API Gateway
+        run: |
+          aws apigateway create-deployment \
+            --rest-api-id 9fuctupzoj \
+            --stage-name prod
