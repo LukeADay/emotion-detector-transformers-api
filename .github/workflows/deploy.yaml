@@ -66,7 +66,7 @@ jobs:
       - name: Check if Lambda Function Exists
         id: check-lambda
         run: |
-          echo "Checking if the Lambda function exists..."
+          echo "Checking if the Lambda function exists.."
           aws lambda get-function --function-name emotion-detection || exit 1
         continue-on-error: true
 
